@@ -26,7 +26,7 @@ public class BtDevAdapter extends RecyclerView.Adapter<BtDevAdapter.VH> {
         addBound();
     }
 
-    private void addBound() {
+    private void addBound() {//先添加已配对的设备
         Set<BluetoothDevice> bondedDevices = BluetoothAdapter.getDefaultAdapter().getBondedDevices();
         if (bondedDevices != null)
             mDevices.addAll(bondedDevices);
@@ -61,6 +61,7 @@ public class BtDevAdapter extends RecyclerView.Adapter<BtDevAdapter.VH> {
         notifyDataSetChanged();
     }
 
+    //重新扫描
     public void reScan() {
         mDevices.clear();
         addBound();

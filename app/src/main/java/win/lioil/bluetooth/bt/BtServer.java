@@ -3,6 +3,7 @@ package win.lioil.bluetooth.bt;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothServerSocket;
 import android.bluetooth.BluetoothSocket;
+import android.util.Log;
 
 import win.lioil.bluetooth.util.Util;
 
@@ -24,14 +25,16 @@ public class BtServer extends BtBase {
     public void listen() {
         try {
             BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
-//            mSSocket = adapter.listenUsingRfcommWithServiceRecord(TAG, SPP_UUID); //加密传输，Android强制执行配对，弹窗显示配对码
-            mSSocket = adapter.listenUsingInsecureRfcommWithServiceRecord(TAG, SPP_UUID); //明文传输(不安全)，无需配对
+            mSSocket = adapter.listenUsingRfcommWithServiceRecord(TAG, SPP_UUID); //加密传输，Android强制执行配对，弹窗显示配对码
+//            mSSocket = adapter.listenUsingInsecureRfcommWithServiceRecord(TAG, SPP_UUID); //明文传输(不安全)，无需配对
             // 开启子线程
             Util.EXECUTOR.execute(new Runnable() {
                 @Override
                 public void run() {
                     try {
-                        BluetoothSocket socket = mSSocket.accept(); // 监听连接
+                        BluetoothSocket socket = mSSocket.accept(); // 监听连接 阻塞的
+                        //当客户端调用loopRead时，连接上后，这个阻塞就会通过
+                        Log.d("socket1", socket.toString());
                         mSSocket.close(); // 关闭监听，只连接一个设备
                         loopRead(socket); // 循环读取
                     } catch (Throwable e) {

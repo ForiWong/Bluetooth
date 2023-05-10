@@ -3,6 +3,7 @@ package win.lioil.bluetooth.bt;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.os.Environment;
+import android.util.Log;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -11,21 +12,20 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.util.UUID;
 
-import win.lioil.bluetooth.APP;
+import win.lioil.bluetooth.app.APP;
 import win.lioil.bluetooth.util.Util;
 
-/**
- * 客户端和服务端的基类，用于管理socket长连接
- */
 public class BtBase {
+    //Android开发SPP经典蓝牙。传统蓝牙采用的是SPP（Serial Port Profile）协议进行数据传输。
+    //SPP的UUID：00001101-0000-1000-8000-00805F9B34FB，手机一般以客户端的角色主动连接SPP协议设备。
     static final UUID SPP_UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
-    private static final String FILE_PATH = Environment.getExternalStorageDirectory().getAbsolutePath() + "/bluetooth/";
+    public static final String FILE_PATH = Environment.getExternalStorageDirectory().getAbsolutePath() + "/bluetooth/";
     private static final int FLAG_MSG = 0;  //消息标记
     private static final int FLAG_FILE = 1; //文件标记
 
     private BluetoothSocket mSocket;
     private DataOutputStream mOut;
-    private Listener mListener;
+    private Listener mListener;//回调
     private boolean isRead;
     private boolean isSending;
 
@@ -43,14 +43,25 @@ public class BtBase {
                 mSocket.connect();
             notifyUI(Listener.CONNECTED, mSocket.getRemoteDevice());
             mOut = new DataOutputStream(mSocket.getOutputStream());
-            DataInputStream in = new DataInputStream(mSocket.getInputStream());
+            DataInputStream in = new DataInputStream(mSocket.getInputStream());//输入流
             isRead = true;
-            while (isRead) { //死循环读取
+            while (isRead) { //循环读取
                 switch (in.readInt()) {
                     case FLAG_MSG: //读取短消息
-                        String msg = in.readUTF();
-                        notifyUI(Listener.MSG, "接收短消息：" + msg);
+                        Log.d("bt msg", "短信息");
+                        byte[] bytes = new byte[1024];
+                        int bytesLen;
+                        while ((bytesLen = in.read(bytes)) != -1) {
+                            Log.d("bt msg len", "短信息" + bytesLen);
+                            //注意指定编码格式，发送方和接收方一定要统一，建议使用UTF-8
+//                            for (int i = 0; i < bytesLen; i++) {
+//                                Log.d("byte - ", bytes[i]+"");
+//                            }
+                            String bodyString = new String(bytes, 0, bytesLen, "UTF-8");
+                            notifyUI(Listener.MSG, "接收短消息：" + bodyString);
+                        }
                         break;
+
                     case FLAG_FILE: //读取文件
                         Util.mkdirs(FILE_PATH);
                         String fileName = in.readUTF(); //文件名
@@ -97,7 +108,7 @@ public class BtBase {
      * 发送文件
      */
     public void sendFile(final String filePath) {
-        if (checkSend()) return;
+        if (!checkSend()) return;
         isSending = true;
         Util.EXECUTOR.execute(new Runnable() {
             @Override

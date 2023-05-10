@@ -7,14 +7,16 @@ import android.os.Bundle;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.TextView;
 
 import java.io.File;
 
-import win.lioil.bluetooth.APP;
 import win.lioil.bluetooth.R;
+import win.lioil.bluetooth.app.APP;
+import win.lioil.bluetooth.util.BluetoothUtil;
 import win.lioil.bluetooth.util.BtReceiver;
 
 public class BtClientActivity extends Activity implements BtBase.Listener, BtReceiver.Listener, BtDevAdapter.Listener {
@@ -55,7 +57,17 @@ public class BtClientActivity extends Activity implements BtBase.Listener, BtRec
             APP.toast("已经连接了", 0);
             return;
         }
-        mClient.connect(dev);
+        //没有配对进行配对
+        if (dev.getBondState() == BluetoothDevice.BOND_NONE) {
+            //尚未配对
+            boolean isSuccess = BluetoothUtil.createBond(dev);//开始蓝牙配对
+            //配对成功
+            if (isSuccess) {
+                mClient.connect(dev);
+            }
+        } else if (dev.getBondState() == BluetoothDevice.BOND_BONDED) {
+            mClient.connect(dev);
+        }
         APP.toast("正在连接...", 0);
         mTips.setText("正在连接...");
     }
@@ -82,6 +94,7 @@ public class BtClientActivity extends Activity implements BtBase.Listener, BtRec
     }
 
     public void sendFile(View view) {
+        Log.d("filePath", BtBase.FILE_PATH);
         if (mClient.isConnected(null)) {
             String filePath = mInputFile.getText().toString();
             if (TextUtils.isEmpty(filePath) || !new File(filePath).isFile())
@@ -108,6 +121,7 @@ public class BtClientActivity extends Activity implements BtBase.Listener, BtRec
                 mTips.setText(msg);
                 break;
             case BtBase.Listener.MSG:
+                Log.d("接收：", obj.toString());
                 msg = String.format("\n%s", obj);
                 mLogs.append(msg);
                 break;

@@ -1,26 +1,32 @@
-package win.lioil.bluetooth;
+package win.lioil.bluetooth.ui;
 
-import android.Manifest;
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.os.Build;
-import android.os.Bundle;
 import android.view.View;
 
+import win.lioil.bluetooth.R;
+import win.lioil.bluetooth.app.APP;
 import win.lioil.bluetooth.ble.BleClientActivity;
 import win.lioil.bluetooth.ble.BleServerActivity;
 import win.lioil.bluetooth.bt.BtClientActivity;
 import win.lioil.bluetooth.bt.BtServerActivity;
 
-public class MainActivity extends Activity {
+public class MainActivity extends BaseActivity {
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+    public int getLayoutId() {
+        return R.layout.activity_main;
+    }
 
+    @Override
+    public void initViews() {
+
+    }
+
+    @Override
+    public void initData() {
         // 检查蓝牙开关
         BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
         if (adapter == null) {
@@ -30,9 +36,10 @@ public class MainActivity extends Activity {
         } else {
             if (!adapter.isEnabled()) {
                 //直接开启蓝牙
-                adapter.enable();
-                //跳转到设置界面
-                //startActivityForResult(new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE), 112);
+                //adapter.enable();
+
+                //或者
+                turnOnBlueTooth(this, 100);
             }
         }
 
@@ -42,19 +49,12 @@ public class MainActivity extends Activity {
             finish();
             return;
         }
+    }
 
-        // Android 6.0动态请求权限
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            String[] permissions = {Manifest.permission.WRITE_EXTERNAL_STORAGE
-                    , Manifest.permission.READ_EXTERNAL_STORAGE
-                    , Manifest.permission.ACCESS_COARSE_LOCATION};
-            for (String str : permissions) {
-                if (checkSelfPermission(str) != PackageManager.PERMISSION_GRANTED) {
-                    requestPermissions(permissions, 111);
-                    break;
-                }
-            }
-        }
+    public void turnOnBlueTooth(Activity activity, int requestCode) {
+        Intent intent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+        activity.startActivityForResult(intent, requestCode);
+        //对应的,在onActivityResult()方法可以知道是否成功打开蓝牙
     }
 
     public void btClient(View view) {

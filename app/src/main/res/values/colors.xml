@@ -5,4 +5,6 @@
     <color name="colorAccent">#FF4081</color>
     <color name="white">#fff</color>
     <color name="grey">#ead6d6</color>
+    <color name="unclickable_btn">#D2D2D2</color>
+    <color name="clickable_btn">#65B9EE</color>
 </resources>

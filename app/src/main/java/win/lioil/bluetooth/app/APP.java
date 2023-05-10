@@ -1,12 +1,13 @@
-package win.lioil.bluetooth;
+package win.lioil.bluetooth.app;
 
 import android.annotation.SuppressLint;
 import android.app.Application;
 import android.os.Handler;
+import android.os.Looper;
 import android.widget.Toast;
 
 public class APP extends Application {
-    private static final Handler sHandler = new Handler();
+    private static final Handler sHandler = new Handler(Looper.getMainLooper());
     private static Toast sToast; // 单例Toast,避免重复创建，显示时间过长
 
     @SuppressLint("ShowToast")
