@@ -64,6 +64,13 @@ public class BluetoothUtil {
         }
     }
 
+    //自动配对设置Pin值
+    static public boolean autoBond(Class btClass,BluetoothDevice device,String strPin) throws Exception {
+        Method autoBondMethod = btClass.getMethod("setPin",new Class[]{byte[].class});
+        Boolean result = (Boolean)autoBondMethod.invoke(device,new Object[]{strPin.getBytes()});
+        return result;
+    }
+
     // 取消蓝牙配对
     public static boolean removeBond(BluetoothDevice device) {
         try {
