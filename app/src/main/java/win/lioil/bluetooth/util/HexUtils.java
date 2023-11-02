@@ -4,6 +4,19 @@ package win.lioil.bluetooth.util;
  * 0、1、2、3、4、5、6、7、8、9 A、B、C、D、E、F
  * 一个十六进制数（Hex），正好为4个二进制位。一个字节（byte）为8个二进制位。
  * 因此，我们可以将一个byte用两个Hex表示，同理，我们也可以将两个Hex转换为一个byte。
+ *
+ * 一个完整的数据包分析
+ * AA 50655DAB 1E 08 04000400 1B 13 00 53 F650D5
+ *
+ * AA – 前导帧(preamble)
+ * 0x50655DAB – 访问地址(access address)
+ * 1E – LL帧头字段(LL header)
+ * 08 – 有效数据包长度(payload length)
+ * 04000400 – ATT数据长度，以及L2CAP通道编号
+ * 1B – notify command
+ * 0x13 – 电量数据handle
+ * 0x53 – 真正要发送的电量数据
+ * 0xF650D5 – CRC24值
  */
 public class HexUtils {
 

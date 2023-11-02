@@ -70,6 +70,7 @@ public class BleClientDetailActivity extends AppCompatActivity {
         Intent intent = getIntent();
         if (intent.getParcelableExtra(EXTRA_TAG) != null) {
             BluetoothDevice dev = intent.getParcelableExtra(EXTRA_TAG);
+            //连接connectGatt
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {//23
                 //autoContent 是直接连接到远程设备（false）还是直接连接到 远程设备一可用就自动连接（true） BluetoothDevice设置蓝牙传输层模式，报133错误，
                 //也可能传输层问题，设置不同的传输层模式解决
@@ -80,6 +81,22 @@ public class BleClientDetailActivity extends AppCompatActivity {
             logTv(String.format("与[%s]开始连接............", dev));
         }
     }
+    /**
+     * 如何避免ble蓝牙连接出现133错误？
+     *
+     * Android 连接外围设备的数量有限，当不需要连接蓝牙设备的时候，必须调用 BluetoothGatt#close 方法释放资源；
+     * 蓝牙 API 连接蓝牙设备的超时时间大概在 20s 左右，具体时间看系统实现。有时候某些设备进行蓝牙连接的时间会很长，大概十多秒。
+     * 如果自己手动设置了连接超时时间在某些设备上可能会导致接下来几次的连接尝试都会在 BluetoothGattCallback#onConnectionStateChange
+     * 返回 state == 133；
+     *
+     * 能否避免android设备与ble设备连接/断开时上报的133这类错误?
+     * 1、在连接失败或者断开连接之后，调用 close 并刷新缓存
+     * 2、尽量不要在startLeScan的时候尝试连接，先stopLeScan后再去连
+     * 3、对同一设备断开后再次连接(连接失败重连)，哪怕调用完close，需要等待一段时间（400毫秒试了1次，结果不 行；1000毫秒则再没出现过问题）
+     * 后再去connectGatt
+     * 4、可以在连接前都startLeScan一下，成功率要高一点
+     *
+     * */
 
     private void initViews() {
         mWriteET = findViewById(R.id.et_write);
@@ -132,7 +149,7 @@ public class BleClientDetailActivity extends AppCompatActivity {
             Log.i(TAG, String.format("onConnectionStateChange:%s,%s,%s,%s", dev.getName(), dev.getAddress(), status, newState));
             if (status == BluetoothGatt.GATT_SUCCESS && newState == BluetoothProfile.STATE_CONNECTED) {
                 isConnected = true;
-                //开启扫描服务:一般在设备连接成功后调用，扫描到设备服务后回调onServicesDiscovered()函数
+                //todo 开启扫描服务:一般在设备连接成功后调用，扫描到设备服务后回调onServicesDiscovered()函数
                 gatt.discoverServices();//发现远程设备及其提供的服务、特征和描述符。
             } else {
                 isConnected = false;
@@ -166,7 +183,7 @@ public class BleClientDetailActivity extends AppCompatActivity {
             Log.d("蓝牙", "onServicesDiscovered");
             //发现远程设备的服务，遍历各uuid
             Log.i(TAG, String.format("onServicesDiscovered:%s,%s,%s", gatt.getDevice().getName(), gatt.getDevice().getAddress(), status));
-            if (status == BluetoothGatt.GATT_SUCCESS) { //BLE服务发现成功
+            if (status == BluetoothGatt.GATT_SUCCESS) { // BLE服务发现成功
                 //设置MTU，最大传输单元
                 //gatt.requestMtu(500);
 
@@ -214,6 +231,16 @@ public class BleClientDetailActivity extends AppCompatActivity {
 //                    return;
 //                }
 //                enableGattServicesNotification(bluetoothGattCharacteristic);
+
+                //BLE蓝牙开发主要有负责通信的BluetoothGattService完成的。当且称为通信服务。通信服务通过硬件工程师提供的UUID获取。获取方式如下：
+                //
+                //BluetoothGattService service = mBluetoothGatt.getService(UUID.fromString(“蓝牙模块提供的负责通信UUID字符串”));
+                //通信服务中包含负责读写的BluetoothGattCharacteristic，且分别称为notifyCharacteristic和writeCharacteristic。其中notifyCharacteristic负责开启监听，也就是启动收数据的通道，writeCharacteristic负责写入数据；
+                //
+//                BluetoothGattService service = mBluetoothGatt.getService(UUID.fromString("蓝牙模块提供的负责通信服务UUID字符串"));
+//                // 例如形式如：49535343-fe7d-4ae5-8fa9-9fafd205e455
+//                BluetoothGattCharacteristic notifyCharacteristic = service.getCharacteristic(UUID.fromString("notify uuid"));
+//                BluetoothGattCharacteristic writeCharacteristic =  service.getCharacteristic(UUID.fromString("write uuid"));
 
             }
         }
@@ -303,17 +330,45 @@ public class BleClientDetailActivity extends AppCompatActivity {
         @Override
         public void onDescriptorWrite(BluetoothGatt gatt, BluetoothGattDescriptor descriptor, int status) {
             Log.d("蓝牙", "onDescriptorWrite");
-            synchronized (locker) {
+            synchronized (locker) {//
                 if (descriptor != null) {
                     UUID uuid = descriptor.getUuid();
                     String valueStr = Arrays.toString(descriptor.getValue());
                     Log.i(TAG, String.format("onDescriptorWrite:%s,%s,%s,%s,%s", gatt.getDevice().getName(), gatt.getDevice().getAddress(), uuid, valueStr, status));
                     logTv("写入Descriptor[" + uuid + "]:\n" + valueStr);
                 }
+
+                if (status == BluetoothGatt.GATT_SUCCESS) {
+
+                    //开启监听成功，可以向设备写入命令了
+
+                    Log.e(TAG, "开启监听成功");
+
+                }
             }
         }
 
         //修改mtu回调
+        /*
+        单次写的数据大小有20字节限制，如何发送长数据？
+        BLE单次写的数据量大小是有限制的，通常是20字节，可以尝试通过requestMTU增大，但不保证能成功。分包写是一种解决
+        方案，需要定义分包协议，假设每个包大小20字节，分两种包，数据包和非数据包。对于数据包，头两个字节表示包的序号，
+        剩下的都填充数据。对于非数据包，主要是发送一些控制信息。
+
+        总体流程如下：
+        （1）、定义通讯协议，如下(这里只是个举例，可以根据项目需求扩展)
+        消息号(1个字节)功能(1个字节)子功能(1个字节)数据长度(2个字节)数据内容(N个字节)CRC校验(1个字节)  0101010000–2D
+
+        （2）、封装通用发送数据接口(拆包)
+        该接口根据会发送数据内容按最大字节数拆分(一般20字节)放入队列，拆分完后，依次从队列里取出发送
+
+        （3）、封装通用接收数据接口(组包)
+        该接口根据从接收的数据按协议里的定义解析数据长度判读是否完整包，不是的话把每条消息累加起来
+
+        （4）、解析完整的数据包，进行业务逻辑处理
+
+        （5）、协议还可以引入加密解密，需要注意的选算法参数的时候，加密后的长度最好跟原数据长度一致，这样不会影响拆包组包
+        * */
         @Override
         public void onMtuChanged(BluetoothGatt gatt, int mtu, int status) {
             super.onMtuChanged(gatt, mtu, status);
@@ -343,6 +398,7 @@ public class BleClientDetailActivity extends AppCompatActivity {
         }
     }
 
+    //清理GATT层缓存
     public static boolean refreshGattCache(BluetoothGatt gatt) {
         boolean result = false;
         try {
@@ -386,6 +442,10 @@ public class BleClientDetailActivity extends AppCompatActivity {
     /**
      * 注意：连续频繁读写数据容易失败，读写操作间隔最好200ms以上，或等待上次回调完成后再进行下次读写操作！
      * 写入数据成功会回调->onCharacteristicWrite()
+     *
+     * 读写问题
+     * 蓝牙的写入操作, 读取操作必须序列化进行. 写入数据和读取数据是不能同时进行的, 如果调用了写入数据的方法,
+     * 马上调用又调用写入数据或者读取数据的方法,第二次调用的方法会立即返回 false, 代表当前无法进行操作；
      **/
     public void write(View view) {
         BluetoothGattService service = getGattService(BleServerActivity.UUID_SERVICE);
@@ -396,9 +456,9 @@ public class BleClientDetailActivity extends AppCompatActivity {
 
             BluetoothGattCharacteristic characteristic = service.getCharacteristic(uuid);//通过UUID获取可写的Characteristic
             if (!TextUtils.isEmpty(text)) {
-                characteristic.setValue(text.getBytes()); //单次最多20个字节
+                characteristic.setValue(text.getBytes()); //单次最多20个字节 value一般为Hex格式指令，其内容由设备通信的蓝牙通信协议规定；
                 characteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
-                boolean isSuccess = mBluetoothGatt.writeCharacteristic(characteristic);
+                boolean isSuccess = mBluetoothGatt.writeCharacteristic(characteristic);//
                 if (isSuccess) {
                     Log.d(TAG, " --------- writeCharacteristic --------- Success");
                 } else {
@@ -474,7 +534,7 @@ public class BleClientDetailActivity extends AppCompatActivity {
                 // it first so it doesn't update the data field on the user interface.
                 //有活的特征通知，先清除，赋值为空，在重新设置通知获取
                 if (mNotifyCharacteristic1 != null) {
-                    setCharacteristicNotification(
+                    setCharacteristicNotification(//
                             mNotifyCharacteristic1, false);
                     mNotifyCharacteristic1 = null;
                 }
@@ -482,7 +542,7 @@ public class BleClientDetailActivity extends AppCompatActivity {
             }
             if ((charaProp | BluetoothGattCharacteristic.PROPERTY_NOTIFY) > 0) {
                 mNotifyCharacteristic1 = characteristic;
-                setCharacteristicNotification(
+                setCharacteristicNotification(//
                         characteristic, true);//这个位置有关系吗？
             }
             appearButton();

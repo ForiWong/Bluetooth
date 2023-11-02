@@ -2,8 +2,12 @@ package win.lioil.bluetooth.ui;
 
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.location.LocationManager;
+import android.os.Build;
+import android.provider.Settings;
 import android.view.View;
 
 import win.lioil.bluetooth.R;
@@ -27,6 +31,9 @@ public class MainActivity extends BaseActivity {
 
     @Override
     public void initData() {
+//        final BluetoothManager bluetoothManager = (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
+//        BluetoothAdapter mBluetoothAdapter = bluetoothManager.getAdapter();
+
         // 检查蓝牙开关
         BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
         if (adapter == null) {
@@ -35,7 +42,7 @@ public class MainActivity extends BaseActivity {
             return;
         } else {
             if (!adapter.isEnabled()) {
-                //直接开启蓝牙
+                //直接开启蓝牙 //不建议强制打开蓝牙，官方建议通过Intent让用户选择打开蓝牙
                 //adapter.enable();
 
                 //或者
@@ -49,6 +56,8 @@ public class MainActivity extends BaseActivity {
             finish();
             return;
         }
+
+        openLocation();
     }
 
     public void turnOnBlueTooth(Activity activity, int requestCode) {
@@ -71,5 +80,26 @@ public class MainActivity extends BaseActivity {
 
     public void bleServer(View view) {
         startActivity(new Intent(this, BleServerActivity.class));
+    }
+
+    int REQUEST_LOCATION_PERMISSION = 101;
+
+    private void openLocation(){
+        //开启位置服务，支持获取ble蓝牙扫描结果
+        if (Build.VERSION.SDK_INT >=  Build.VERSION_CODES.M && !isLocationOpen(getApplicationContext())) {
+            Intent enableLocate = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+            startActivityForResult(enableLocate, REQUEST_LOCATION_PERMISSION);
+        }
+    }
+
+    public static boolean isLocationOpen(final Context context){
+        LocationManager manager = (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);
+
+        //gps定位
+        boolean isGpsProvider = manager.isProviderEnabled(LocationManager.GPS_PROVIDER);
+        //网络定位
+        boolean isNetWorkProvider = manager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
+
+        return isGpsProvider|| isNetWorkProvider;
     }
 }

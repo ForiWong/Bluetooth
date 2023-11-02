@@ -27,6 +27,10 @@ import win.lioil.bluetooth.R;
 import win.lioil.bluetooth.bean.BleDev;
 import win.lioil.bluetooth.util.BluetoothUtil;
 
+/**
+ * todo 注意: BLE设备地址是动态变化(每隔一段时间都会变化),而经典蓝牙设备是出厂就固定不变了！
+ * 什么导致改变导致？
+ */
 public class BleDevAdapter extends RecyclerView.Adapter<BleDevAdapter.VH> {
     private static final String TAG = BleDevAdapter.class.getSimpleName();
     private final Listener mListener;
@@ -53,6 +57,10 @@ public class BleDevAdapter extends RecyclerView.Adapter<BleDevAdapter.VH> {
                     }
                 }
             }
+
+            result.getScanRecord();//获取BLE广播数据
+            result.getDevice().getName();//设备信息
+
             BleDev bleDev = new BleDev();
             bleDev.setDev(result.getDevice());
             bleDev.setRssi(result.getRssi());
@@ -134,8 +142,9 @@ public class BleDevAdapter extends RecyclerView.Adapter<BleDevAdapter.VH> {
             mHandler.postDelayed(new Runnable() {
                 @Override
                 public void run() {
-                    bluetoothLeScanner.startScan(filters,scanSettings,mScanCallback);
-                    // Android5.0新增的扫描API，扫描返回的结果更友好，比如BLE广播数据以前是byte[] scanRecord，而新API帮我们解析成ScanRecord类
+                    bluetoothLeScanner.startScan(filters,scanSettings,mScanCallback);//开始扫描
+                    // Android5.0新增的扫描API，扫描返回的结果更友好，比如BLE广播数据以前是byte[] scanRecord，
+                    // 而新API帮我们解析成ScanRecord类
                     bluetoothLeScanner.startScan(mScanCallback);
                     mHandler.postDelayed(new Runnable() {
                         @Override
@@ -153,11 +162,11 @@ public class BleDevAdapter extends RecyclerView.Adapter<BleDevAdapter.VH> {
             if (mListener != null) {
                 mListener.onScanning();
             }
-            mBluetoothAdapter.startLeScan(leScanCallback); //开始搜索
+            mBluetoothAdapter.startLeScan(leScanCallback); //开始扫描
             mHandler.postDelayed(new Runnable() {
                 @Override
                 public void run() {
-                    mBluetoothAdapter.stopLeScan(leScanCallback);
+                    mBluetoothAdapter.stopLeScan(leScanCallback);//停止扫描
                     isScanning = false;
                     if (mListener != null) {
                         mListener.onScannSuccess();

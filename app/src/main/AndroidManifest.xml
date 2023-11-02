@@ -5,19 +5,30 @@
 
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+
+    <!--Android4.3 至 Android6.0 需要蓝牙权限-->
+    <!-- 设置最大支持使用版本为30，即Android12和以后的高版本不再需要老权限了 -->
     <!-- 建立蓝牙连接和传输权限 -->
-    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
     <!-- 扫描蓝牙设备或修改蓝牙设置权限 -->
-    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
 
     <!-- Android 6.0及后续版本扫描蓝牙,需要定位权限(进入GPS设置,可以看到蓝牙定位) -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 
-    <!-- required = true 表示手机必须支持BLE，否则无法安装运行 -->
+    <!--Android12及以上 申请蓝牙扫描，连接，广播权限-->
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+
+    <!-- 使用蓝牙低功耗BLE，required = true 表示手机必须支持BLE，否则无法安装运行 -->
     <uses-feature
         android:name="android.hardware.bluetooth_le"
         android:required="true" />
+
+    <!--如果要在后台开启服务扫描蓝牙，则还需要增加后台访问位置权限-->
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
 
     <application
         android:name=".app.APP"

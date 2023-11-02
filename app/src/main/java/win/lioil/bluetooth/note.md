@@ -193,3 +193,110 @@ for (int i = 0; i < wifiInfos.size(); i++) {
         e.printStackTrace();
     }
 }
+
+## 参考 BLE掘金
+https://juejin.cn/post/7281276425219817472#heading-37
+
+##频段、距离、带宽
+蓝牙是一种近距离无线通信技术，运行在2.4GHz免费频段，它的特性就是近距离通信，典型距离是 10 米以内，传输速度最高可达 24 Mbps，
+支持多连接，安全性高，非常适合用智能设备上。
+1、使用距离范围，蓝牙3.0的有效传输距离为10米左右，而蓝牙5.0有效工作距离可达300米。
+2、数据传输速度，蓝牙3.0的数据传输率每秒大约在200k左右，而蓝牙5.0传输速度为2Mbps。
+5.0版本蓝牙可以向下兼容3.0或2.0版本，
+蓝牙5.0传输速度上限为24Mbps，低功耗模式传输速度是之前4.2LE版本的两倍，有效工作距离可达300米，是4.2LE版本的4倍。
+
+Android中的蓝牙
+目前最新的蓝牙协议是蓝牙5.3版本（截止到2023年9月22日）
+Android 4.3 开始，开始支持BLE功能，但只支持Central（中心角色or主机）
+Android 5.0开始，开始支持Peripheral（外设角色or从机）
+
+中心模式和外设模式是什么意思？
+Central Mode： Android端作为中心设备，连接其他外围设备。
+Peripheral Mode：Android端作为外围设备，被其他中心设备连接。
+在Android 5.0支持外设模式之后，才算实现了两台Android手机通过BLE进行相互通信。
+
+##GAP
+GAP（Generic Access Profile），它用来控制设备连接和广播。GAP 使你的设备被其他设备可见，并决定了你的设备是否可以或者
+怎样与设备进行交互。例如 Beacon 设备就只是向外发送广播，不支持连接；小米手环就可以与中心设备建立连接。
+
+##广播数据包
+在 GAP 中蓝牙设备可以向外广播数据包，广播包分为两部分： Advertising Data Payload（广播数据）和 Scan Response Data 
+Payload（扫描回复），每种数据最长可以包含 31 byte。这里广播数据是必需的，因为外设必需不停的向外广播，让中心设备知道它的
+存在。扫描回复是可选的，中心设备可以向外设请求扫描回复，这里包含一些设备额外的信息，例如设备的名字。
+
+##ScanRecord
+ScanCallback --> onScanResult(ScanResult) --> ScanRecord
+在 Android 5.0 也提供 ScanRecord 帮你解析，直接可以通过这个类获得有意义的数据。广播中可以有哪些数据类型呢？设备连接属性，
+标识设备支持的 BLE 模式，这个是必须的。设备名字，设备包含的关键 GATT service，或者 Service data，厂商自定义数据等等。
+
+##广播的时间间隔 能耗
+外围设备会设定一个广播间隔，每个广播间隔中，它会重新发送自己的广播数据。广播间隔越长，越省电，同时也不太容易扫描到。
+
+##交互方式
+GAP决定了你的设备怎样与其他设备进行交互。答案是有2种方式：
+##完全基于广播的方式 
+也有些情况是不需要连接的，只要外设广播自己的数据即可。用这种方式主要目的是让外围设备，把自己的信息发送给多个中心设备。使用
+广播这种方式最典型的应用就是苹果的 iBeacon。这是苹果公司定义的基于 BLE 广播实现的功能，可以实现广告推送和室内定位。这也
+说明了，APP 使用 BLE，需要定位权限。
+基于非连接的，这种应用就是依赖 BLE 的广播，也叫作 Beacon。这里有两个角色，发送广播的一方叫做 Broadcaster，监听广播的
+一方叫 Observer。
+
+##基于GATT连接的方式
+大部分情况下，外设通过广播自己来让中心设备发现自己，并建立 GATT 连接，从而进行更多的数据交换。这里有且仅有两个角色，发起
+连接的一方，叫做中心设备—Central，被连接的设备，叫做外设—Peripheral。
+外围设备：这一般就是非常小或者简单的低功耗设备，用来提供数据，并连接到一个更加相对强大的中心设备，例如小米手环。
+中心设备：中心设备相对比较强大，用来连接其他外围设备，例如手机等。
+GATT 连接需要特别注意的是：GATT 连接是独占的。也就是一个 BLE 外设同时只能被一个中心设备连接。一旦外设被连接，它就会马
+上停止广播，这样它就对其他设备不可见了。当设备断开，它又开始广播。中心设备和外设需要双向通信的话，唯一的方式就是建立 GATT 连接。
+GATT 通信的双方是 C/S 关系。外设作为 GATT 服务端（Server），它维持了 ATT 的查找表以及 service 和 characteristic 
+的定义。中心设备是 GATT 客户端（Client），它向 Server 发起请求。需要注意的是，所有的通信事件，都是由客户端发起，并且接收服务端的响应。
+
+## BLE通信基础
+BLE通信的基础有两个重要的概念，ATT和GATT。 
+
+ATT
+全称 attribute protocol，中文名“属性协议”。它是 BLE 通信的基础。 
+ATT 把数据封装，向外暴露为“属性”，提供“属性”的为服务端，获取“属性”的为客户端。
+ATT 是专门为低功耗蓝牙设计的，结构非常简单，数据长度很短。 
+
+GATT
+全称 Generic Attribute Profile， 中文名“通用属性配置文件”。它是在ATT 的基础上，
+对 ATT 进行的进一步逻辑封装，定义数据的交互方式和含义。GATT是我们做 BLE 开发的时候直接接触的概念。
+
+GATT 层级
+GATT按照层级定义了4个概念：配置文件（Profile）、服务（Service）、特征（Characteristic）和描述（Descriptor）。
+## 他们的关系是这样的：Profile 就是定义了一个实际的应用场景，一个 Profile包含若干个 Service，
+一个 Service 包含若干个 Characteristic，一个 Characteristic 可以包含若干 Descriptor。
+
+Profile
+Profile 并不是实际存在于 BLE 外设上的，它只是一个被 Bluetooth SIG 或者外设设计者预先定义的 Service 的集合。例如心率Profile
+（Heart Rate Profile）就是结合了 Heart Rate Service 和 Device Information Service。所有官方通过 GATT Profile 的列表可以从这里找到。
+
+Service
+Service 是把数据分成一个个的独立逻辑项，它包含一个或者多个 Characteristic。每个 Service 有一个 UUID 唯一标识。 UUID 
+有 16 bit 的，或者 128 bit 的。16 bit 的 UUID 是官方通过认证的，需要花钱购买，128 bit 是自定义的，这个就可以自己随便设置。
+官方通过了一些标准 Service，完整列表在这里。以 Heart Rate Service为例，可以看到它的官方通过 16 bit UUID 是 0x180D，包含
+3 个 Characteristic：Heart Rate Measurement, Body Sensor Location 和 Heart Rate Control Point，并且定义了只有第
+一个是必须的，它是可选实现的。
+
+Characteristic
+需要重点提一下Characteristic， 它定义了数值和操作，包含一个Characteristic声明、Characteristic属性、值、值的描述(Optional)。
+通常我们讲的 BLE 通信，其实就是对 Characteristic 的读写或者订阅通知。比如在实际操作过程中，我对某一个Characteristic进行读，就是获
+取这个Characteristic的value。
+
+UUID
+Service、Characteristic 和 Descriptor 都是使用 UUID 唯一标示的。
+UUID 是全局唯一标识，它是 128bit 的值，为了便于识别和阅读，
+一般以 “8位-4位-4位-4位-12位”的16进制标示，比如“12345678-abcd-1000-8000-123456000000”。
+
+但是，128bit的UUID 太长，考虑到在低功耗蓝牙中，数据长度非常受限的情况，蓝牙又使用了所谓的 16 bit 或者 32 bit 的 UUID，
+形式如下：“0000XXXX-0000-1000-8000-00805F9B34FB”。除了 “XXXX” 那几位以外，其他都是固定，
+所以说，其实 16 bit UUID 是对应了一个 128 bit 的 UUID。
+这样一来，UUID 就大幅减少了，例如 16 bit UUID只有有限的 65536（16的四次方） 个。
+与此同时，因为数量有限，所以 16 bit UUID 并不能随便使用。蓝牙技术联盟已经预先定义了一些 UUID，我们可以直接使用，
+比如“00001011-0000-1000-8000-00805F9B34FB”就一个是常见于BLE设备中的UUID。当然也可以花钱定制自定义的UUID。
+
+## todo 电脑通过插入HLK-B40蓝牙透传模块，获得蓝牙BLE连接能力
+
+
+

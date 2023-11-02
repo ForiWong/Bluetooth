@@ -181,7 +181,7 @@ public class BleServerActivity extends Activity {
             Log.i(TAG, String.format("onCharacteristicReadRequest:%s,%s,%s,%s,%s", device.getName(), device.getAddress(), requestId, offset, characteristic.getUuid()));
 //            String response = "CHAR_" + (int) (Math.random() * 100); //模拟数据
             String response = getSendStr();
-            mBluetoothGattServer.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, response.getBytes());// 响应客户端
+            mBluetoothGattServer.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, response.getBytes());// 响应客户端 发送响应
             logTv("客户端读取Characteristic[" + characteristic.getUuid() + "]:\n" + response);
         }
 
@@ -196,6 +196,7 @@ public class BleServerActivity extends Activity {
             logTv("客户端写入Characteristic[" + characteristic.getUuid() + "]:\n" + response);
         }
 
+        // 5.特征被读取。当回复响应成功后，客户端会读取然后触发本方法
         @Override
         public void onDescriptorReadRequest(BluetoothDevice device, int requestId, int offset, BluetoothGattDescriptor descriptor) {
             Log.i(TAG, String.format("onDescriptorReadRequest:%s,%s,%s,%s,%s", device.getName(), device.getAddress(), requestId, offset, descriptor.getUuid()));
@@ -304,7 +305,7 @@ public class BleServerActivity extends Activity {
         //扫描响应数据(可选，当客户端扫描时才发送)
         AdvertiseData scanResponse = new AdvertiseData.Builder()
                 .addManufacturerData(2, new byte[]{66, 66}) //设备厂商数据，自定义
-                .addServiceUuid(new ParcelUuid(UUID_SERVICE)) //服务UUID  //
+                .addServiceUuid(new ParcelUuid(UUID_SERVICE)) //服务UUID  //可以添加多个服务吗
                 .addServiceData(new ParcelUuid(UUID_SERVICE), new byte[]{2}) //服务数据，自定义
                 .build();
 
@@ -323,13 +324,16 @@ public class BleServerActivity extends Activity {
         // 注意：必须要开启可连接的BLE广播，其它设备才能发现并连接BLE服务端!
         // =============启动BLE蓝牙服务端=====================================================================================
         //SERVICE_TYPE_PRIMARY 主服务 SERVICE_TYPE_SECONDARY 次服务（存在主服务中）
+        //可以添加多个服务吗？
         BluetoothGattService service = new BluetoothGattService(UUID_SERVICE, BluetoothGattService.SERVICE_TYPE_PRIMARY);
+
         //添加可读+通知 characteristic，通过characteristic进行读写操作来通信 特征值支持写，支持读，支持通知
         BluetoothGattCharacteristic characteristicRead = new BluetoothGattCharacteristic(UUID_CHAR_READ_NOTIFY,
-                BluetoothGattCharacteristic.PROPERTY_READ | BluetoothGattCharacteristic.PROPERTY_NOTIFY, BluetoothGattCharacteristic.PERMISSION_READ);
+                BluetoothGattCharacteristic.PROPERTY_READ | BluetoothGattCharacteristic.PROPERTY_NOTIFY,
+                BluetoothGattCharacteristic.PERMISSION_READ);
 
         characteristicRead.addDescriptor(new BluetoothGattDescriptor(UUID_DESC_NOTITY, BluetoothGattCharacteristic.PERMISSION_WRITE));
-        service.addCharacteristic(characteristicRead);
+        service.addCharacteristic(characteristicRead);//添加特征
 
         //添加可写characteristic
         BluetoothGattCharacteristic characteristicWrite = new BluetoothGattCharacteristic(UUID_CHAR_WRITE,
@@ -338,6 +342,7 @@ public class BleServerActivity extends Activity {
 
         if (bluetoothManager != null)
             mBluetoothGattServer = bluetoothManager.openGattServer(this, mBluetoothGattServerCallback);
+
         boolean result = mBluetoothGattServer.addService(service);
         if (result) {
             AssistStatic.showToast(BleServerActivity.this, "添加服务成功");
@@ -353,6 +358,7 @@ public class BleServerActivity extends Activity {
             //停止广播
             mBluetoothLeAdvertiser.stopAdvertising(mAdvertiseCallback);
         if (mBluetoothGattServer != null)
+            //关闭服务
             mBluetoothGattServer.close();
     }
 
