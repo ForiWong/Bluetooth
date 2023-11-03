@@ -92,6 +92,11 @@ public class BleDevAdapter extends RecyclerView.Adapter<BleDevAdapter.VH> {
                     }
                 }
             }
+            device.getName();//名称
+            device.getAddress();//硬件地址
+            device.getType();//设备类型
+            device.getBondState();//绑定状态
+
             BleDev bleDev = new BleDev();
             bleDev.setDev(device);
             bleDev.setRssi(rssi);

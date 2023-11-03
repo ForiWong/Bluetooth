@@ -96,6 +96,12 @@ public class BleClientDetailActivity extends AppCompatActivity {
      * 后再去connectGatt
      * 4、可以在连接前都startLeScan一下，成功率要高一点
      *
+     *
+     * 错误代码:
+     * 133 ：连接超时或未找到设备。
+     * 8 ： 设备超出范围
+     * 22 ：表示本地设备终止了连接
+     *
      * */
 
     private void initViews() {
@@ -388,6 +394,25 @@ public class BleClientDetailActivity extends AppCompatActivity {
         closeConn();
     }
 
+    /**
+     * 断开连接
+     *
+     * 断开连接的操作分为两步：
+     *
+     * mBluetoothGatt.disconnect();
+     * mBluetoothGatt.close();
+     *
+     * 调用disconnect()后，会触发手机会触发BluetoothGattCallback#onConnectionStateChange()的回调，回调断开连接信息，
+     * newState = BluetoothProfile.STATE_DISCONNECTED。但调用完disconnect()紧接着马上调用close()，
+     * 会终止BluetoothGattCallback#onConnectionStateChange()的回调。可以看情况将两个进行拆分调用，来实现断开连接，
+     * 但必须两个方法都调用。
+     *
+     * 例如：
+     * 需要在外设修改特征值触发BluetoothGattCallback#onCharacteristicChanged()时，断开连接。可以先在BluetoothGattCallback
+     * #onCharacteristicChanged()中调用disconnect(),并等调用BluetoothGattCallback#onConnectionStateChange()回调，返回
+     * 断开连接信息后，再调用close()对Gatt资源进行关闭。
+     *
+     * */
     // BLE中心设备连接外围设备的数量有限(大概2~7个)，在建立新连接之前必须释放旧连接资源，否则容易出现连接错误133
     private void closeConn() {
         if (mBluetoothGatt != null) {
@@ -398,7 +423,11 @@ public class BleClientDetailActivity extends AppCompatActivity {
         }
     }
 
-    //清理GATT层缓存
+    /**
+     * 该方法是清理GATT层缓存的方法
+     * 最好在断开连接成功的回调方法中使用，即在你自己实现的“BluetoothGattCallback”对象的“onConnectionStateChange”方法
+     * 中判断“status”是“BluetoothProfile.STATE_DISCONNECTED”的时候调用。
+     * */
     public static boolean refreshGattCache(BluetoothGatt gatt) {
         boolean result = false;
         try {

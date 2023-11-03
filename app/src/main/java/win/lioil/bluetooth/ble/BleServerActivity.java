@@ -260,6 +260,7 @@ public class BleServerActivity extends Activity {
         BluetoothManager bluetoothManager = (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
 //        BluetoothAdapter bluetoothAdapter = bluetoothManager.getAdapter();
         BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        bluetoothAdapter.setName("bleName");//设置设备蓝牙名称
 
         // ============启动BLE蓝牙广播(广告) =================================================================================
         //广播设置(必须)
@@ -286,6 +287,7 @@ public class BleServerActivity extends Activity {
                 .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_HIGH) //发射功率级别: 极低,低,中,高
                 .setConnectable(true) //能否连接,广播分为可连接广播和不可连接广播
                 .setTimeout(100000)//设置超时显示，值为0将禁用时间限制
+                //设置持续广播的时间，单位为毫秒。最多180000毫秒。当值为0则无时间限制，持续广播，除非调
                 .build();
         //广播数据(必须，广播启动就会发送)
         /**
@@ -304,6 +306,10 @@ public class BleServerActivity extends Activity {
                 .build();
         //扫描响应数据(可选，当客户端扫描时才发送)
         AdvertiseData scanResponse = new AdvertiseData.Builder()
+                //隐藏广播设备名称
+                .setIncludeDeviceName(false)
+                //隐藏发射功率级别
+                .setIncludeDeviceName(false)
                 .addManufacturerData(2, new byte[]{66, 66}) //设备厂商数据，自定义
                 .addServiceUuid(new ParcelUuid(UUID_SERVICE)) //服务UUID  //可以添加多个服务吗
                 .addServiceData(new ParcelUuid(UUID_SERVICE), new byte[]{2}) //服务数据，自定义
@@ -326,6 +332,14 @@ public class BleServerActivity extends Activity {
         //SERVICE_TYPE_PRIMARY 主服务 SERVICE_TYPE_SECONDARY 次服务（存在主服务中）
         //可以添加多个服务吗？
         BluetoothGattService service = new BluetoothGattService(UUID_SERVICE, BluetoothGattService.SERVICE_TYPE_PRIMARY);
+
+        //创建初始化特征值例子
+//        BluetoothGattCharacteristic mGattCharacteristic = new BluetoothGattCharacteristic(UUID_CHAR_READ_NOTIFY,
+//                BluetoothGattCharacteristic.PROPERTY_WRITE|
+//                        BluetoothGattCharacteristic.PROPERTY_NOTIFY|
+//                        BluetoothGattCharacteristic.PROPERTY_READ,
+//                BluetoothGattCharacteristic.PERMISSION_WRITE|
+//                        BluetoothGattCharacteristic.PERMISSION_READ);
 
         //添加可读+通知 characteristic，通过characteristic进行读写操作来通信 特征值支持写，支持读，支持通知
         BluetoothGattCharacteristic characteristicRead = new BluetoothGattCharacteristic(UUID_CHAR_READ_NOTIFY,

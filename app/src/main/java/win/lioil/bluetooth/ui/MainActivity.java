@@ -2,12 +2,15 @@ package win.lioil.bluetooth.ui;
 
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.location.LocationManager;
 import android.os.Build;
 import android.provider.Settings;
+import android.util.Log;
 import android.view.View;
 
 import win.lioil.bluetooth.R;
@@ -18,6 +21,7 @@ import win.lioil.bluetooth.bt.BtClientActivity;
 import win.lioil.bluetooth.bt.BtServerActivity;
 
 public class MainActivity extends BaseActivity {
+    private static final String TAG = "MainActivity";
 
     @Override
     public int getLayoutId() {
@@ -58,6 +62,13 @@ public class MainActivity extends BaseActivity {
         }
 
         openLocation();
+
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(BluetoothAdapter.ACTION_STATE_CHANGED);
+        registerReceiver(btStateReceiver,filter);
+
+        //根据mac地址获取到BluetoothDevice
+        //BluetoothDevice mBluetoothDevice = adapter.getRemoteDevice("macAddressStr");
     }
 
     public void turnOnBlueTooth(Activity activity, int requestCode) {
@@ -102,4 +113,31 @@ public class MainActivity extends BaseActivity {
 
         return isGpsProvider|| isNetWorkProvider;
     }
+
+    /** 蓝牙打开状态广播 */
+    private BroadcastReceiver btStateReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (BluetoothAdapter.ACTION_STATE_CHANGED.equals(intent.getAction())) {
+                int blueState = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, 0);
+                switch (blueState) {
+                    case BluetoothAdapter.STATE_TURNING_ON:
+                        Log.d(TAG, "btStateReceiver---onReceive---蓝牙正在打开中");
+                        break;
+
+                    case BluetoothAdapter.STATE_ON:
+                        Log.d(TAG, "btStateReceiver---onReceive---蓝牙已经打开");
+                        break;
+
+                    case BluetoothAdapter.STATE_TURNING_OFF:
+                        Log.d(TAG, "btStateReceiver---onReceive---蓝牙正在关闭中");
+                        break;
+
+                    case BluetoothAdapter.STATE_OFF:
+                        Log.d(TAG, "btStateReceiver---onReceive---蓝牙已经关闭");
+                        break;
+                }
+            }
+        }
+    };
 }
